@@ -1,13 +1,36 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight, Check, ChevronDown, Download, Menu, QrCode, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, Download, Menu, Pause, Play, QrCode, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const eventDetails = { date: "Sunday, 20 December 2026", time: "Doors 2:00 PM · Buffet 3:00 PM", place: "1 High Point, New John Street, Bradford BD1 2BA", price: "£30" };
 const paymentLink = "https://monzo.me/joenkemakosi?h=5WqWwn&account_type=personal";
+
+const buffetDishes = [
+  { id: "01", name: "Smoky Nigerian Jollof", desc: "Firewood-smoked, sweet peppers and rich tomato base.", category: "RICE", img: "/assets/food/food-01-jollof.jpg" },
+  { id: "02", name: "Festive Fried Rice", desc: "Colourful, savoury, sweet corn and spring onions.", category: "RICE", img: "/assets/food/food-02-fried-rice.jpg" },
+  { id: "03", name: "Village Native Rice", desc: "Infused with palm oil, smoked fish & scent leaves.", category: "RICE", img: "/assets/food/food-15-native-rice.jpg" },
+  { id: "04", name: "White Rice & Sauce", desc: "Fluffy rice with a fresh, rich vegetable sauce.", category: "RICE", img: "/assets/food/food-16-white-rice-stew.jpg" },
+  { id: "05", name: "Rich Egusi Soup", desc: "Slow-cooked melon seeds with bitterleaf and smoked fish.", category: "SOUPS", img: "/assets/food/food-05-egusi-soup.jpg" },
+  { id: "06", name: "Bitterleaf Soup (Onugbu)", desc: "Deep traditional Anambra flavour served with swallow.", category: "SOUPS", img: "/assets/food/food-06-bitterleaf-soup.jpg" },
+  { id: "07", name: "Aromatic Oha Soup", desc: "Tender oha leaves, cocoyam thickener and crayfish.", category: "SOUPS", img: "/assets/food/food-07-oha-soup.jpg" },
+  { id: "08", name: "Fisherman Okro Soup", desc: "Jumbo seafood medley, tiger prawns, crab & fish.", category: "SOUPS", img: "/assets/food/food-08-fisherman-okro.jpg" },
+  { id: "09", name: "White Soup (Nsala)", desc: "Fresh catfish broth with aromatic utazi & yam.", category: "SOUPS", img: "/assets/food/food-09-nsala-soup.jpg" },
+  { id: "10", name: "Spiced Croaker Fish", desc: "Whole golden grilled croaker with fried plantain.", category: "PROTEINS", img: "/assets/food/food-04-croaker-fish.jpg" },
+  { id: "11", name: "Grilled Assorted Meats", desc: "Tender beef, shaki and tripe glazed in suya pepper.", category: "PROTEINS", img: "/assets/food/food-03-assorted-meats.jpg" },
+  { id: "12", name: "Peppered Chicken & Turkey", desc: "Slow-roasted and tossed in habanero glaze.", category: "PROTEINS", img: "/assets/food/food-14-peppered-chicken.jpg" },
+  { id: "13", name: "Spiced Nkwobi Special", desc: "Tender cow foot simmered in spicy palm oil paste.", category: "CLASSICS", img: "/assets/food/food-10-nkwobi.jpg" },
+  { id: "14", name: "African Salad (Abacha)", desc: "Cassava shreds, ugba, kpomo, garden eggs and fish.", category: "CLASSICS", img: "/assets/food/food-11-abacha.jpg" },
+  { id: "15", name: "Warm Ukwa Special", desc: "Toasted breadfruit cooked soft with dry fish broth.", category: "CLASSICS", img: "/assets/food/food-12-ukwa.jpg" },
+  { id: "16", name: "Steamed Moi-Moi", desc: "Velvety steamed bean pudding with flaked fish.", category: "FAVOURITES", img: "/assets/food/food-13-moi-moi.jpg" },
+  { id: "17", name: "Golden Dodo & Sides", desc: "Sweet caramelized ripe plantains and crisp garnishes.", category: "SIDES", img: "/assets/food/food-17-plantain-sides.jpg" },
+  { id: "18", name: "Grand Buffet Selection", desc: "Unlimited trips across the entire 14-dish feast table.", category: "TABLE", img: "/assets/food/food-18-buffet-platter.jpg" },
+  { id: "19", name: "Sweet Treats & Puff Puff", desc: "Soft golden puff-puff, chin-chin and holiday desserts.", category: "DESSERT", img: "/assets/food/food-19-dessert-bites.jpg" },
+];
+
 function initials(name: string) { return name.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase(); }
 function escapeHtml(value: string | null | undefined) { return String(value ?? "").replace(/[&<>\"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character); }
 
@@ -28,8 +51,34 @@ export default function Home() {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [reserveError, setReserveError] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [dishOffset, setDishOffset] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [autoRotate, setAutoRotate] = useState(true);
+
   const ticket = guestPass?.ticket ?? null;
   const chosenPackage = { name: "The Complete Nigerian Buffet Pass", price: "£30" };
+
+  const filteredDishes = useMemo(() => {
+    if (selectedCategory === "ALL") return buffetDishes;
+    return buffetDishes.filter(d => d.category === selectedCategory);
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (!autoRotate) return;
+    const interval = setInterval(() => {
+      setDishOffset(prev => (prev + 1) % filteredDishes.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, [autoRotate, filteredDishes.length]);
+
+  const nextDish = () => {
+    setAutoRotate(false);
+    setDishOffset(prev => (prev + 1) % filteredDishes.length);
+  };
+  const prevDish = () => {
+    setAutoRotate(false);
+    setDishOffset(prev => (prev - 1 + filteredDishes.length) % filteredDishes.length);
+  };
 
   useEffect(() => {
     if (!ticket) { setQrCodeUrl(""); return; }
@@ -90,7 +139,25 @@ export default function Home() {
   const downloadQrImage = () => { if (!qrCodeUrl || !ticket) return; const anchor = document.createElement("a"); anchor.href = qrCodeUrl; anchor.download = `${ticket.ticketId}-entry-qr.png`; anchor.click(); };
 
   return <div className="site-shell reference-site">
-    <header className="reference-header"><a className="reference-brand" href="#top"><img className="reference-logo" src="/assets/afro-kravings-logo-trimmed.png" alt="Afro Kravings" /></a><span className="nav-context">JINGLE BELLS WITH JOE<br /><strong>20 DEC · BRADFORD</strong></span><nav className={mobileOpen ? "reference-nav is-open" : "reference-nav"}><a href="#packages"><span>01</span> The menu</a><a href="#how-it-works"><span>02</span> The day</a><a href="#order"><span>03</span> The pass</a><a href="#details"><span>04</span> Find us</a></nav><div className="reference-actions"><a className="reference-login" href="#order">£30 / Take a seat</a><button className="mobile-menu reference-menu" onClick={() => setMobileOpen(open => !open)} aria-label="Toggle navigation">{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button></div></header>
+    <header className="reference-header">
+      <a className="reference-brand" href="#top" onClick={() => setMobileOpen(false)}>
+        <img className="reference-logo" src="/assets/afro-kravings-logo-trimmed.png" alt="Afro Kravings" />
+      </a>
+      <span className="nav-context">JINGLE BELLS WITH JOE<br /><strong>20 DEC · BRADFORD</strong></span>
+      <nav className={mobileOpen ? "reference-nav is-open" : "reference-nav"}>
+        <a href="#packages" onClick={() => setMobileOpen(false)}><span>01</span> The menu</a>
+        <a href="#how-it-works" onClick={() => setMobileOpen(false)}><span>02</span> The day</a>
+        <a href="#food-preview" onClick={() => setMobileOpen(false)}><span>03</span> The feast</a>
+        <a href="#order" onClick={() => setMobileOpen(false)}><span>04</span> The pass</a>
+        <a href="#details" onClick={() => setMobileOpen(false)}><span>05</span> Find us</a>
+      </nav>
+      <div className="reference-actions">
+        <a className="reference-login" href="#order" onClick={() => setMobileOpen(false)}>£30 / Take a seat</a>
+        <button className="mobile-menu reference-menu" onClick={() => setMobileOpen(open => !open)} aria-label="Toggle navigation">
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
+    </header>
     <main id="top">
       <section className="studio-opening" aria-label="Afro Kravings Jingle Bells with Joe Nigerian Buffet">
         <div className="opening-topline">
@@ -132,19 +199,90 @@ export default function Home() {
           <span>FISHERMAN OKRO</span>
           <span>NKWOBI</span>
           <span>MOI-MOI</span>
+          <span>EGUSI SOUP</span>
+          <span>CROAKER FISH</span>
+          <span>ABACHA</span>
         </div>
       </section>
 
-      <section className="feast-index" aria-label="A taste of the Nigerian buffet">
+      <section className="feast-index" id="food-preview" aria-label="A taste of the Nigerian buffet">
         <div className="feast-index-heading">
-          <span>02 / A taste of the table</span>
-          <p>Real plates. Big flavour.<br />A little preview of what’s coming.</p>
+          <div>
+            <span>02 / A taste of the table</span>
+            <p>19 Authentic Plates. Real Flavour.<br />Auto-swapping the Nigerian feast below.</p>
+          </div>
+          <div className="feast-controls">
+            <div className="feast-category-pills">
+              {["ALL", "RICE", "SOUPS", "PROTEINS", "CLASSICS"].map(cat => (
+                <button
+                  key={cat}
+                  className={`feast-pill ${selectedCategory === cat ? "is-active" : ""}`}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setDishOffset(0);
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="feast-nav-arrows">
+              <button onClick={prevDish} aria-label="Previous dishes" className="nav-arrow-btn">
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setAutoRotate(r => !r)}
+                aria-label={autoRotate ? "Pause auto swap" : "Resume auto swap"}
+                className={`nav-arrow-btn toggle-auto ${autoRotate ? "is-rotating" : ""}`}
+                title={autoRotate ? "Pause auto-swap" : "Resume auto-swap"}
+              >
+                {autoRotate ? <Pause size={14} /> : <Play size={14} />}
+              </button>
+              <button onClick={nextDish} aria-label="Next dishes" className="nav-arrow-btn">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
         </div>
+
         <div className="feast-photo-rail">
-          <figure><img src="/assets/menu/02-food-reference.webp" alt="Grilled assorted meats with onions and spice" /><figcaption><strong>01</strong> Assorted meats</figcaption></figure>
-          <figure><img src="/assets/menu/03-food-reference.webp" alt="Grilled croaker fish with plantain" /><figcaption><strong>02</strong> Croaker fish</figcaption></figure>
-          <figure><img src="/assets/menu/04-food-reference.webp" alt="White rice with vegetable sauce and chicken" /><figcaption><strong>03</strong> Rice & sauce</figcaption></figure>
-          <figure><img src="/assets/menu/05-food-reference.webp" alt="Fried rice with grilled chicken" /><figcaption><strong>04</strong> Fried rice</figcaption></figure>
+          {[0, 1, 2, 3].map(offset => {
+            const index = (dishOffset + offset) % filteredDishes.length;
+            const dish = filteredDishes[index];
+            return (
+              <figure key={`${dish.id}-${offset}`} className="feast-card-item">
+                <div className="feast-card-img-box">
+                  <img src={dish.img} alt={dish.name} loading="lazy" />
+                  <span className="feast-category-tag">{dish.category}</span>
+                  <div className="feast-overlay-shade" />
+                </div>
+                <figcaption>
+                  <div className="dish-num-title">
+                    <strong>{dish.id}</strong>
+                    <span>{dish.name}</span>
+                  </div>
+                  <small>{dish.desc}</small>
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
+        <div className="feast-indicator-bar">
+          <span className="indicator-text">
+            Dish {String((dishOffset % filteredDishes.length) + 1).padStart(2, "0")} of {filteredDishes.length} · <em>{filteredDishes[dishOffset % filteredDishes.length]?.name}</em>
+          </span>
+          <div className="indicator-dots">
+            {filteredDishes.slice(0, 10).map((_, i) => (
+              <span
+                key={i}
+                className={`dot ${i === (dishOffset % Math.min(10, filteredDishes.length)) ? "active" : ""}`}
+                onClick={() => {
+                  setAutoRotate(false);
+                  setDishOffset(i);
+                }}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -163,21 +301,24 @@ export default function Home() {
           <div className="festive-cloche-wrap">
             <img src="/assets/holiday/golden-cloche.png" alt="Grand Nigerian Feast Cloche" className="festive-cloche-img" />
           </div>
-          <p>Everything listed is included in your £30 buffet pass. From fragrant rice dishes to deep, comforting soups and classic Nigerian favourites.</p>
+          <p>Everything listed is included in your £30 buffet pass. From fragrant firewood-smoked rice to deep, comforting soups and authentic Nigerian delicacies.</p>
         </div>
         <div className="buffet-list">
-          <article><span>RICE</span><div><h3>Nigerian Jollof Rice</h3><p>Rich, smoky and warmly spiced.</p></div><b>RICE DISHES</b></article>
-          <article><span>RICE</span><div><h3>Fried Rice</h3><p>Colourful, savoury and generously packed.</p></div><b>RICE DISHES</b></article>
-          <article><span>RICE</span><div><h3>Native Rice</h3><p>Traditional Nigerian flavour in every spoonful.</p></div><b>RICE DISHES</b></article>
-          <article><span>RICE</span><div><h3>White Rice & Vegetable Sauce</h3><p>A comforting classic with a fresh, rich sauce.</p></div><b>RICE DISHES</b></article>
-          <article><span>SOUP</span><div><h3>Bitterleaf Soup (Onugbu)</h3><p>Served with pounded yam or semovita.</p></div><b>TRADITIONAL SOUP</b></article>
-          <article><span>SOUP</span><div><h3>Oha Soup</h3><p>Served with pounded yam or semovita.</p></div><b>TRADITIONAL SOUP</b></article>
-          <article><span>SOUP</span><div><h3>Egusi Soup</h3><p>Served with pounded yam or semovita.</p></div><b>TRADITIONAL SOUP</b></article>
-          <article><span>SOUP</span><div><h3>Fisherman Okro Soup</h3><p>Served with pounded yam or semovita.</p></div><b>SEAFOOD SPECIAL</b></article>
-          <article><span>SOUP</span><div><h3>Nsala Soup</h3><p>Served with pounded yam or semovita.</p></div><b>TRADITIONAL SOUP</b></article>
-          <article><span>MORE</span><div><h3>Abacha · Ukwa · Nkwobi</h3><p>Beloved Nigerian favourites, ready for the table.</p></div><b>CLASSICS</b></article>
-          <article><span>MORE</span><div><h3>Proteins</h3><p>Chicken, turkey, croaker fish and assorted meats.</p></div><b>FROM THE KITCHEN</b></article>
-          <article><span>MORE</span><div><h3>Moi-Moi</h3><p>Soft, savoury and made for a generous helping.</p></div><b>FAVOURITE</b></article>
+          {buffetDishes.map(dish => (
+            <article key={dish.id} className="buffet-dish-row">
+              <div className="buffet-row-left">
+                <span className="dish-number">{dish.id}</span>
+                <div className="buffet-thumb-wrap">
+                  <img src={dish.img} alt={dish.name} className="buffet-dish-thumb" loading="lazy" />
+                </div>
+              </div>
+              <div className="buffet-row-info">
+                <h3>{dish.name}</h3>
+                <p>{dish.desc}</p>
+              </div>
+              <b className="buffet-row-badge">{dish.category}</b>
+            </article>
+          ))}
         </div>
       </section>
 
